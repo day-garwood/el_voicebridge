@@ -1,5 +1,5 @@
-#ifndef _vb_h
-#define _vb_h
+#ifndef vbz_h
+#define vbz_h
 
 /* C standard library includes */
 
@@ -243,97 +243,97 @@ vb_handler* current_handler;
 /* Functions: All internal functions should begin with an underscore. */
 
 /*
-_vb_find_handler_by_id
+vbz_find_handler_by_id
 Attempts to find a handler index by its textual ID.
 Returns -1 if no handler is found.
 */
 
-int _vb_find_handler_by_id(vb_registry* manager, char* id);
+int vbz_find_handler_by_id(vb_registry* manager, char* id);
 
 /*
-_vb_handler_is_valid_id
+vbz_handler_is_valid_id
 Checks if text matches a valid handler ID format (alphanumeric, dash, dot, or underscore).
 */
 
-int _vb_handler_is_valid_id(char* id);
+int vbz_handler_is_valid_id(char* id);
 
 /*
-_vb_registry_cleanup
+vbz_registry_cleanup
 Cleans up a registry.
 */
 
-void _vb_registry_cleanup(vb_registry* manager);
+void vbz_registry_cleanup(vb_registry* manager);
 
 /*
-_vb_handler_unregister
+vbz_handler_unregister
 Unregisters a handler from the registry. This is used during cleanup.
 Note this clears out everything to do with a handle, including its textual ID and interface.
 */
 
-void _vb_handler_unregister(vb_handler* handler);
+void vbz_handler_unregister(vb_handler* handler);
 
 /*
-_vb_handler_implementation_reset
+vbz_handler_implementation_reset
 Used before initialisation and after cleanup: Simply initialises all the pointers to NULL.
 */
 
-void _vb_handler_implementation_reset(vb_handler_interface* i);
+void vbz_handler_implementation_reset(vb_handler_interface* i);
 
 /*
-_vb_handler_cleanup
+vbz_handler_cleanup
 Cleans up data from a single handler.
 Note it doesn't clear out the name or implementation, in case we want to use it again.
 Its only purpose is to clear out the engine and data associated with it.
 */
 
-void _vb_handler_cleanup(vb_handler* handler);
+void vbz_handler_cleanup(vb_handler* handler);
 
 /*
-_vb_registry_reset
+vbz_registry_reset
 Used before initialisation and after cleanup: Simply initialises all the object properties to NULL, 0 etc.
 */
 
-void _vb_registry_reset(vb_registry* manager);
+void vbz_registry_reset(vb_registry* manager);
 
 /*
-_vb_initialise_handler
+vbz_initialise_handler
 Initialises an appropriate handler for use based on the configuration settings.
 At the moment, the public-facing vb_speaker_start wraps this function.
 */
 
-vb_result _vb_initialise_handler(vb_speaker* voice);
+vb_result vbz_initialise_handler(vb_speaker* voice);
 
 /*
-_vb_initialise_preferred_handler
+vbz_initialise_preferred_handler
 Attempts to initialise the preferred handler.
 If this function fails, it returns vbr_init_failed.
 This includes if a preferred ID can't be found, or even is unset.
 */
 
-vb_result _vb_initialise_preferred_handler(vb_speaker* voice);
+vb_result vbz_initialise_preferred_handler(vb_speaker* voice);
 
 /*
-_vb_initialise_any_handler
+vbz_initialise_any_handler
 Attempts to initialise any handler by walking through the registry in order.
 If this function fails, it means there are no available speech engine handlers that can be used.
 */
 
-vb_result _vb_initialise_any_handler(vb_speaker* voice);
+vb_result vbz_initialise_any_handler(vb_speaker* voice);
 
 /*
-_vb_handler_is_usable
+vbz_handler_is_usable
 Looks for certain functions in the handler. If they are missing, it is considered unusable.
 See "vb_handler_register" above.
 */
 
-int _vb_handler_is_usable(vb_handler* handler);
+int vbz_handler_is_usable(vb_handler* handler);
 
 /*
-_vb_handler_prepare_registration
+vbz_handler_prepare_registration
 Allocates memory for a new handler to be registered in the registry.
 */
 
-vb_result _vb_handler_prepare_registration(vb_registry* registry);
+vb_result vbz_handler_prepare_registration(vb_registry* registry);
 
 /* + Builtin handler implementations */
 
@@ -348,7 +348,7 @@ These linkers contain pointers to relevant libraries and procedures that will be
 
 /* Structures */
 
-/* _vb_com is a linker struct to help us deal with COM more efficiently. */
+/* vbz_com is a linker struct to help us deal with COM more efficiently. */
 
 typedef struct
 {
@@ -358,34 +358,34 @@ HRESULT(WINAPI* CoCreateInstance)(REFCLSID, LPUNKNOWN, DWORD, REFIID, LPVOID*);
 HRESULT(WINAPI* CoUninitialize)(void);
 int autoinit;
 }
-_vb_com;
+vbz_com;
 
 typedef struct
 {
-_vb_com com;
+vbz_com com;
 ISpVoice* voice;
 WCHAR* text_to_speak;
 }
-_vb_sapi_handler;
+vbz_sapi_handler;
 
 /* Functions */
 
 /* Com helpers */
 
-int _vb_com_initialise(_vb_com* com);
-void _vb_com_reset(_vb_com* com);
-int _vb_com_create_instance(_vb_com* com, CLSID* clsid, IID* iid, void** data);
-void _vb_com_cleanup(_vb_com* com);
+int vbz_com_initialise(vbz_com* com);
+void vbz_com_reset(vbz_com* com);
+int vbz_com_create_instance(vbz_com* com, CLSID* clsid, IID* iid, void** data);
+void vbz_com_cleanup(vbz_com* com);
 
 /* SAPI handler */
 
-int _vb_sapi_initialise(vb_handler* handler);
-int _vb_sapi_speak(vb_handler* handler, char* text, int interrupt);
-int _vb_sapi_stop(vb_handler* handler);
-int _vb_sapi_pause(vb_handler* handler);
-int _vb_sapi_resume(vb_handler* handler);
-int _vb_sapi_is_speaking(vb_handler* handler);
-void _vb_sapi_cleanup(vb_handler* handler);
+int vbz_sapi_initialise(vb_handler* handler);
+int vbz_sapi_speak(vb_handler* handler, char* text, int interrupt);
+int vbz_sapi_stop(vb_handler* handler);
+int vbz_sapi_pause(vb_handler* handler);
+int vbz_sapi_resume(vb_handler* handler);
+int vbz_sapi_is_speaking(vb_handler* handler);
+void vbz_sapi_cleanup(vb_handler* handler);
 
 #endif
 
@@ -406,36 +406,36 @@ Class (*getClass)(char* name);
 id (*msgSend)(id self, SEL op, ...);
 SEL (*sel_registerName)(char* name);
 }
-_vb_objc;
+vbz_objc;
 
 /* And now the Mac-TTS handler, using the NS framework. */
 
 typedef struct
 {
-_vb_objc objc;
+vbz_objc objc;
 void* foundation;
 void* appkit;
 id voice;
 }
-_vb_mac_handler;
+vbz_mac_handler;
 
 /* Functions */
 
 /* ObjC helpers */
 
-int _vb_objc_initialise(_vb_objc* objc);
-void _vb_objc_reset(_vb_objc* objc);
-void _vb_objc_cleanup(_vb_objc* objc);
+int vbz_objc_initialise(vbz_objc* objc);
+void vbz_objc_reset(vbz_objc* objc);
+void vbz_objc_cleanup(vbz_objc* objc);
 
 /* Mac handler */
 
-int _vb_mac_initialise(vb_handler* handler);
-int _vb_mac_speak(vb_handler* handler, char* text, int interrupt);
-int _vb_mac_stop(vb_handler* handler);
-int _vb_mac_pause(vb_handler* handler);
-int _vb_mac_resume(vb_handler* handler);
-int _vb_mac_is_speaking(vb_handler* handler);
-void _vb_mac_cleanup(vb_handler* handler);
+int vbz_mac_initialise(vb_handler* handler);
+int vbz_mac_speak(vb_handler* handler, char* text, int interrupt);
+int vbz_mac_stop(vb_handler* handler);
+int vbz_mac_pause(vb_handler* handler);
+int vbz_mac_resume(vb_handler* handler);
+int vbz_mac_is_speaking(vb_handler* handler);
+void vbz_mac_cleanup(vb_handler* handler);
 
 #endif
 
@@ -451,16 +451,16 @@ The key is finding one that is permissively licensed (preferably zlib or freer).
 /* We don't check platform here, that's done at the code level. */
 
 /*
-_vb_register_internal_handlers
+vbz_register_internal_handlers
 Attempts to register all builtin handlers.
 */
 
-vb_result _vb_register_internal_handlers(vb_speaker* voice);
+vb_result vbz_register_internal_handlers(vb_speaker* voice);
 
 /* Individual handlers */
 
-vb_result _vb_mac_register_handler(vb_speaker* voice);
-vb_result _vb_sapi_register_handler(vb_speaker* voice);
+vb_result vbz_mac_register_handler(vb_speaker* voice);
+vb_result vbz_sapi_register_handler(vb_speaker* voice);
 
 /* + Helper functions */
 
@@ -468,12 +468,12 @@ vb_result _vb_sapi_register_handler(vb_speaker* voice);
 These are mainly string/text-based functions, used for ID validation and comparison.
 */
 
-int _vb_char_is_alpha(char c);
-int _vb_char_is_digit(char c);
-int _vb_char_is_alpha_numeric(char c);
-int _vb_char_is_upper(char c);
-int _vb_char_is_lower(char c);
-int _vb_strcmp(char* a, char* b, int cs);
-char _vb_char_to_lower(char x);
+int vbz_char_is_alpha(char c);
+int vbz_char_is_digit(char c);
+int vbz_char_is_alpha_numeric(char c);
+int vbz_char_is_upper(char c);
+int vbz_char_is_lower(char c);
+int vbz_strcmp(char* a, char* b, int cs);
+char vbz_char_to_lower(char x);
 
 #endif
