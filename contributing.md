@@ -1,4 +1,4 @@
-# Contributing to VoxBoss
+# Contributing to VoiceBridge
 First of all, thanks so much for your interest in this project. With your help, we can hopefully build something great together.
 
 Whether you're looking to fix bugs, add new features, or simply correct typos, your efforts are appreciated. This document provides guidelines and instructions for contributing to the project.
@@ -6,10 +6,10 @@ Whether you're looking to fix bugs, add new features, or simply correct typos, y
 Here are some tips to get you started.
 
 ### Spread the Word
-Know someone who might benefit from VoxBoss? Share this project with them.
+Know someone who might benefit from VoiceBridge? Share this project with them.
 
 ### Suggest features
-If you've integrated VoxBoss into your project (or even if you compile and use the example), it would be great to know how it went.
+If you've integrated VoiceBridge into your project (or even if you compile and use the example), it would be great to know how it went.
 
 Suggestions for features, handlers and so on are very much encouraged, especially in this early stage. [Feel free to open an issue][1].
 
@@ -34,7 +34,7 @@ To contribute code, fork the repo and open a pull request. If you're new to this
 2. Clone:
 
 ```shell
-git clone https://github.com/username/VoxBoss.git
+git clone https://github.com/username/el_voicebridge.git
 ```
 
 Replace username with your GitHub account name.
@@ -42,13 +42,13 @@ Replace username with your GitHub account name.
 3. Add a remote so you can fetch updates:
 
 ```shell
-git remote add upstream https://github.com/day-garwood/VoxBoss.git
+git remote add upstream https://github.com/day-garwood/el_voicebridge.git
 ```
 
 4. Sync your fork with the original
 
 ```shell
-cd VoxBoss
+cd VoiceBridge
 git fetch upstream
 ```
 
@@ -104,9 +104,9 @@ If the handler is written for the core engine and assuming it is approved, it wi
 #### Attestation
 By contributing, you attest that:
 * The contribution is your original work, or you have permission to submit under the project's licence.
-* You grant VoxBoss the right to use and distribute your contribution under the zlib licence.
+* You grant VoiceBridge the right to use and distribute your contribution under the zlib licence.
 
 ## Feedback & Questions
 Should you have any questions or concerns, please remember that [help is only a click away][1].
 
-[1]: https://github.com/day-garwood/VoxBoss/issues)
+[1]: https://github.com/day-garwood/el_voicebridge/issues)

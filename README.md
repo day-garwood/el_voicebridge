@@ -1,7 +1,7 @@
-# VoxBoss: The Voice Abstraction Library
-Hello there, and welcome to VoxBoss: The ultimate TTS manager that puts you back in control.
+# VoiceBridge: The Voice Abstraction Library
+Hello there, and welcome to VoiceBridge: The ultimate TTS manager that puts you back in control.
 
-VoxBoss is a budding voice abstraction library that is lightweight, extendable, and cross-platform. Its main purposes are:
+VoiceBridge is a budding voice abstraction library that is lightweight, extendable, and cross-platform. Its main purposes are:
 
 * To allow developers to integrate any speech engine they wish with relative ease using a handler-registry system,
 
@@ -12,7 +12,7 @@ VoxBoss is a budding voice abstraction library that is lightweight, extendable, 
 Please note: The default branch is "dev". Any code you download from there may be unstable. For more stable code, please switch to the "main" branch.
 
 ## Current State
-VoxBoss is in its early prerelease stages:
+VoiceBridge is in its early prerelease stages:
 
 * It has handlers for SAPI and Mac's TTS features, and a proof-of-concept test that shows it in action.
 * Its API is very minimal, only providing required functionality for the time being (speak, stop, and is speaking).
