@@ -135,7 +135,7 @@ if(!id) return 0;
 if(id[0]==0) return 0;
 for(int x=0; x<strlen(id); x++)
 {
-if(vbz_char_is_alpha_numeric(id[x])) continue;
+if(isalnum(id[x])) continue;
 char c=id[x];
 if(c==45) continue; /* dash */
 if(c==46) continue; /* dot */
@@ -674,36 +674,6 @@ return vbr_unsupported;
 
 /* Helper functions */
 
-int vbz_char_is_alpha(char c)
-{
-if(vbz_char_is_upper(c)) return 1;
-if(vbz_char_is_lower(c)) return 1;
-return 0;
-}
-int vbz_char_is_digit(char c)
-{
-if(c<48) return 0;
-if(c>57) return 0;
-return 1;
-}
-int vbz_char_is_alpha_numeric(char c)
-{
-if(vbz_char_is_alpha(c)) return 1;
-if(vbz_char_is_digit(c)) return 1;
-return 0;
-}
-int vbz_char_is_upper(char c)
-{
-if(c<65) return 0;
-if(c>90) return 0;
-return 1;
-}
-int vbz_char_is_lower(char c)
-{
-if(c<97) return 0;
-if(c>122) return 0;
-return 1;
-}
 int vbz_strcmp(char* a, char* b, int cs)
 {
 if((a==NULL)&&(b==NULL)) return 0;
@@ -715,8 +685,8 @@ if(cs) return strcmp(a, b);
 /* We don't need a condition because the comparison checks for us. */
 for(int x=0; ; x++)
 {
-char c1=vbz_char_to_lower(a[x]);
-char c2=vbz_char_to_lower(b[x]);
+char c1=tolower(a[x]);
+char c2=tolower(b[x]);
 if(c1<c2) return -1;
 if(c1>c2) return 1;
 
@@ -724,12 +694,4 @@ if(c1>c2) return 1;
 if(c1==0) return 0;
 }
 return 0; /* We should theoretically never reach this point. */
-}
-char vbz_char_to_lower(char x)
-{
-
-/* If char is not uppercase alpha, leave as is. */
-if(x<65) return x;
-if(x>90) return x;
-return x|=0x20;
 }

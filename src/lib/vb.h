@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* Platform specific systems */
 
@@ -468,12 +469,6 @@ vb_result vbz_sapi_register_handler(vb_speaker* voice);
 These are mainly string/text-based functions, used for ID validation and comparison.
 */
 
-int vbz_char_is_alpha(char c);
-int vbz_char_is_digit(char c);
-int vbz_char_is_alpha_numeric(char c);
-int vbz_char_is_upper(char c);
-int vbz_char_is_lower(char c);
 int vbz_strcmp(char* a, char* b, int cs);
-char vbz_char_to_lower(char x);
 
 #endif
