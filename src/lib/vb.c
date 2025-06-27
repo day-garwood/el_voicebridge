@@ -4,17 +4,6 @@
 
 /* Functions */
 
-vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback)
-{
-if(!config) return vbr_invalid_args;
-config->handler_preference=NULL;
-config->handler_fallback=(allow_fallback? 1: 0);
-if((!handler)||(!*handler)) return vbr_ok;
-char* handler_preference=vbz_strdup(handler);
-if(!handler_preference) return vbr_memory;
-config->handler_preference=handler_preference;
-return vbr_ok;
-}
 vb_result vb_speaker_initialise(vb_speaker* voice, char* voice_preference, int allow_fallback)
 {
 if(!voice) return vbr_invalid_args;
@@ -161,6 +150,32 @@ return vbr_ok;
 
 /* Internal implementation */
 
+vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback)
+{
+if(!config) return vbr_invalid_args;
+if(vbz_config_is_initialised(config)) return vbr_already_initialised;
+config->handler_preference=NULL;
+config->handler_fallback=(allow_fallback? 1: 0);
+if((!handler)||(!*handler)) return vbz_config_set_state_init(config);
+char* handler_preference=vbz_strdup(handler);
+if(!handler_preference) return vbr_memory;
+config->handler_preference=handler_preference;
+return vbz_config_set_state_init(config);
+}
+int vbz_config_is_initialised(vbz_config* config)
+{
+if(!config) return 0;
+if(config->begin!=vbz_config_begin) return 0;
+if(config->end!=vbz_config_end) return 0;
+return 1;
+}
+vb_result vbz_config_set_state_init(vbz_config* config)
+{
+if(!config) return vbr_invalid_args;
+config->begin=vbz_config_begin;
+config->end=vbz_config_end;
+return vbr_ok;
+}
 int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id)
 {
 if(!manager) return -1;
@@ -234,17 +249,17 @@ if(!voice) return vbr_invalid_args;
 if(!voice->config.handler_preference) return vbz_initialise_any_handler(voice);
 vb_result rc=vbz_initialise_preferred_handler(voice);
 if(rc==vbr_ok) return rc;
-if(!voice->config.handler_fallback) return vbr_init_failed;
+if(!voice->config.handler_fallback) return vbr_initialisation_failed;
 return vbz_initialise_any_handler(voice);
 }
 vb_result vbz_initialise_preferred_handler(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
-if(!voice->config.handler_preference) return vbr_init_failed;
+if(!voice->config.handler_preference) return vbr_initialisation_failed;
 int id=vbz_registry_find_handler_by_id(&voice->registry, voice->config.handler_preference);
-if(id<0) return vbr_init_failed;
-if(!voice->registry.handler[id].implementation.initialise) return vbr_init_failed;
-if(!voice->registry.handler[id].implementation.initialise(&voice->registry.handler[id])) return vbr_init_failed;
+if(id<0) return vbr_initialisation_failed;
+if(!voice->registry.handler[id].implementation.initialise) return vbr_initialisation_failed;
+if(!voice->registry.handler[id].implementation.initialise(&voice->registry.handler[id])) return vbr_initialisation_failed;
 voice->current_handler=&voice->registry.handler[id];
 return vbr_ok;
 }
@@ -258,7 +273,7 @@ if(!voice->registry.handler[x].implementation.initialise(&voice->registry.handle
 voice->current_handler=&voice->registry.handler[x];
 return vbr_ok;
 }
-return vbr_init_failed;
+return vbr_initialisation_failed;
 }
 int vbz_handler_is_usable(vb_handler* handler)
 {

@@ -67,7 +67,8 @@ vbr_memory,
 vbr_unsupported,
 vbr_invalid_args,
 vbr_not_initialised,
-vbr_init_failed,
+vbr_already_initialised,
+vbr_initialisation_failed,
 vbr_handler_invalid,
 vbr_handler_id_invalid,
 vbr_handler_id_taken,
@@ -186,6 +187,12 @@ vb_result vb_handler_implement_cleanup(vb_handler* handler, vb_handler_cb_cleanu
 
 /* + Internal data: All internal data starts with "vbz_". */
 
+/* ++ Macros: Magic numbers */
+/* These arbitrary, randomly generated numbers are used for fortifying struct data and memory. */
+
+#define vbz_config_begin 0x724B8EE1
+#define vbz_config_end 0xAF471799
+
 /* ++ Structures */
 
 /*
@@ -194,8 +201,10 @@ This is small at the moment but may grow in time.
 */
 typedef struct
 {
+int begin;
 char* handler_preference; /* Internal, controlled with parameter to config_initialise */
 int handler_fallback; /* 0 to disallow fallbacks, or non-zero to allow them. */
+int end;
 }
 vbz_config;
 
@@ -262,6 +271,21 @@ The config structure is initialised to sensible defaults.
 */
 
 vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback);
+
+/*
+vbz_config_is_initialised
+Returns initialisation status based on boundary flags being set to magic numbers.
+*/
+
+int vbz_config_is_initialised(vbz_config* config);
+
+/*
+vbz_config_set_state_init
+Sets the boundary flags to indicate init status..
+Should only be called when object is fully initialised.
+*/
+
+vb_result vbz_config_set_state_init(vbz_config* config);
 
 /* +++ Registry methods */
 
