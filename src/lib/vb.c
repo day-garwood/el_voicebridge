@@ -9,11 +9,9 @@ vb_result vb_config_initialise(vb_config* config, char* preference)
 if(!config) return vbr_invalid_args;
 config->handler_preference=NULL;
 config->handler_fallback=1;
-if(!preference) return vbr_ok;
-if(preference[0]==0) return vbr_ok;
-char* prefstore=malloc(strlen(preference)+1);
+if((!preference)||(!*preference)) return vbr_ok;
+char* prefstore=vbz_strdup(preference);
 if(!prefstore) return vbr_memory;
-strcpy(prefstore, preference);
 config->handler_preference=prefstore;
 return vbr_ok;
 }
@@ -36,15 +34,13 @@ return vbr_ok;
 vb_result vb_handler_register(vb_speaker* voice, char* id, vb_handler* handler)
 {
 if(!voice) return vbr_invalid_args;
-if(!id) return vbr_invalid_args;
-if(id[0]==0) return vbr_invalid_args;
+if((!id)||(!*id)) return vbr_invalid_args;
 if(!vbz_handler_is_valid_id(id)) return vbr_handler_id_invalid;
 if(vbz_find_handler_by_id(&voice->registry, id)>-1) return vbr_handler_id_taken;
 if(!handler) return vbr_invalid_args;
 if(!vbz_handler_is_usable(handler)) return vbr_handler_invalid;
-char* new=malloc(strlen(id)+1);
+char* new=vbz_strdup(id);
 if(!new) return vbr_memory;
-strcpy(new, id);
 vb_result rc=vbz_handler_prepare_registration(&voice->registry);
 if(rc!=vbr_ok)
 {
@@ -335,8 +331,7 @@ return 1;
 int vbz_sapi_speak(vb_handler* handler, char* text, int interrupt)
 {
 if(!handler) return 0;
-if(!text) return 0;
-if(text[0]==0) return 0;
+if((!text)||(!*text)) return 0;
 vbz_sapi_handler* data=handler->data;
 if(!data) return 0;
 int source_length=strlen(text);
@@ -694,4 +689,12 @@ if(c1>c2) return 1;
 if(c1==0) return 0;
 }
 return 0; /* We should theoretically never reach this point. */
+}
+char* vbz_strdup(char* str)
+{
+if((!str)||(!*str)) return NULL;
+char* tmp=malloc(strlen(str)+1);
+if(!tmp) return NULL;
+strcpy(tmp, str);
+return tmp;
 }

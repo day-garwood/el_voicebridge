@@ -469,6 +469,12 @@ vb_result vbz_sapi_register_handler(vb_speaker* voice);
 These are mainly string/text-based functions, used for ID validation and comparison.
 */
 
+/* Case-insensitive enabled string compare */
+
 int vbz_strcmp(char* a, char* b, int cs);
+
+/* Not all compilers have strdup, so we implement it. */
+
+char* vbz_strdup(char* str);
 
 #endif
