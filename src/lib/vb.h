@@ -1,5 +1,5 @@
-#ifndef vbz_h
-#define vbz_h
+#ifndef el_vb_h
+#define el_vb_h
 
 /* C standard library includes */
 
@@ -37,14 +37,8 @@ vb_speaker is the main object you will be working with.
 Internally, it holds a copy of the configuration, the handler registry, and a reference to the handler currently in use.
 These members should not be touched in an external contexts.
 */
-typedef struct vb_speaker vb_speaker;
+typedef struct vbz_speaker vb_speaker;
 
-/*
-vb_config is a way to configure the speech system you're about to initialise.
-This is small at the moment but may grow in time.
-Note that members of this struct that are pointers should not be touched in an external context. These are passed as parameters to config_initialise and copied over.
-*/
-typedef struct vb_config vb_config;
 
 /*
 vb_handler is what you will use to build your own handler.
@@ -56,15 +50,10 @@ How to use:
 See the dummy handler example in the example/handlers directory.
 Note that you may not need to do this, unless you need to support a specific handler that isn't supported here.
 */
-typedef struct vb_handler vb_handler;
+
+typedef struct vbz_handler vb_handler;
 
 /* Public facing structures */
-
-struct vb_config
-{
-char* handler_preference; /* Internal, controlled with parameter to config_initialise */
-int handler_fallback; /* 0 to disallow fallbacks, or non-zero to allow them. */
-};
 
 /*
 The vb_handler_interface struct is what holds pointers to all the functions that a handler should implement.
@@ -109,18 +98,11 @@ vb_result;
 /* Functions */
 
 /*
-vb_config_initialise
-The config structure is initialised to sensible defaults.
-*/
-
-vb_result vb_config_initialise(vb_config* config, char* preference);
-
-/*
 vb_speaker_initialise
 Registers builtin handlers and configures the system.
 */
 
-vb_result vb_speaker_initialise(vb_speaker* voice, vb_config* config);
+vb_result vb_speaker_initialise(vb_speaker* voice, char* handler, int allow_fallback);
 
 /*
 vb_handler_register
@@ -202,18 +184,21 @@ void vb_speaker_cleanup(vb_speaker* voice);
 /* Structures */
 
 /*
-vb_registry is what stores all the handlers.
+vbz_config is a way to configure the speech system you're about to initialise.
+This is small at the moment but may grow in time.
 */
-
-typedef struct vb_registry vb_registry;
-
-/* Full structure definitions */
+typedef struct
+{
+char* handler_preference; /* Internal, controlled with parameter to config_initialise */
+int handler_fallback; /* 0 to disallow fallbacks, or non-zero to allow them. */
+}
+vbz_config;
 
 /*
 vb_handler: See above.
 */
 
-struct vb_handler
+struct vbz_handler
 {
 char* id;
 vb_handler_interface implementation;
@@ -221,27 +206,36 @@ void* data;
 };
 
 /*
-vb_registry: See above.
+vbz_registry is what stores all the handlers.
 */
 
-struct vb_registry
+typedef struct
 {
 vb_handler* handler;
 int count;
-};
+}
+vbz_registry;
 
 /*
-vb_speaker: See above.
+vbz_speaker: See above.
 */
 
-struct vb_speaker
+struct vbz_speaker
 {
-vb_config config;
-vb_registry registry;
+vbz_config config;
+vbz_registry registry;
 vb_handler* current_handler;
 };
 
+
 /* Functions: All internal functions should begin with an underscore. */
+
+/*
+vbz_config_initialise
+The config structure is initialised to sensible defaults.
+*/
+
+vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback);
 
 /*
 vbz_find_handler_by_id
@@ -249,7 +243,7 @@ Attempts to find a handler index by its textual ID.
 Returns -1 if no handler is found.
 */
 
-int vbz_find_handler_by_id(vb_registry* manager, char* id);
+int vbz_find_handler_by_id(vbz_registry* manager, char* id);
 
 /*
 vbz_handler_is_valid_id
@@ -263,7 +257,7 @@ vbz_registry_cleanup
 Cleans up a registry.
 */
 
-void vbz_registry_cleanup(vb_registry* manager);
+void vbz_registry_cleanup(vbz_registry* manager);
 
 /*
 vbz_handler_unregister
@@ -294,7 +288,7 @@ vbz_registry_reset
 Used before initialisation and after cleanup: Simply initialises all the object properties to NULL, 0 etc.
 */
 
-void vbz_registry_reset(vb_registry* manager);
+void vbz_registry_reset(vbz_registry* manager);
 
 /*
 vbz_initialise_handler
@@ -334,7 +328,7 @@ vbz_handler_prepare_registration
 Allocates memory for a new handler to be registered in the registry.
 */
 
-vb_result vbz_handler_prepare_registration(vb_registry* registry);
+vb_result vbz_handler_prepare_registration(vbz_registry* registry);
 
 /* + Builtin handler implementations */
 

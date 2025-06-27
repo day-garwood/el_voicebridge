@@ -4,31 +4,27 @@
 
 /* Functions */
 
-vb_result vb_config_initialise(vb_config* config, char* preference)
+vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback)
 {
 if(!config) return vbr_invalid_args;
 config->handler_preference=NULL;
-config->handler_fallback=1;
-if((!preference)||(!*preference)) return vbr_ok;
-char* prefstore=vbz_strdup(preference);
-if(!prefstore) return vbr_memory;
-config->handler_preference=prefstore;
+config->handler_fallback=(allow_fallback? 1: 0);
+if((!handler)||(!*handler)) return vbr_ok;
+char* handler_preference=vbz_strdup(handler);
+if(!handler_preference) return vbr_memory;
+config->handler_preference=handler_preference;
 return vbr_ok;
 }
-vb_result vb_speaker_initialise(vb_speaker* voice, vb_config* config)
+vb_result vb_speaker_initialise(vb_speaker* voice, char* voice_preference, int allow_fallback)
 {
 if(!voice) return vbr_invalid_args;
-vb_config c;
-if(!config)
-{
-vb_result rc=vb_config_initialise(&c, NULL);
+vbz_config c;
+vb_result rc=vbz_config_initialise(&c, voice_preference, allow_fallback);
 if(rc!=vbr_ok) return rc;
-config=&c;
-}
 vbz_registry_reset(&voice->registry);
-vb_result rc=vbz_register_internal_handlers(voice);
+rc=vbz_register_internal_handlers(voice);
 if(rc!=vbr_ok) return rc;
-voice->config=*config;
+voice->config=c;
 return vbr_ok;
 }
 vb_result vb_handler_register(vb_speaker* voice, char* id, vb_handler* handler)
@@ -115,7 +111,7 @@ vbz_registry_cleanup(&voice->registry);
 
 /* Internal implementation */
 
-int vbz_find_handler_by_id(vb_registry* manager, char* id)
+int vbz_find_handler_by_id(vbz_registry* manager, char* id)
 {
 if(!manager) return -1;
 for(int x=0; x<manager->count; x++)
@@ -140,7 +136,7 @@ return 0;
 }
 return 1;
 }
-void vbz_registry_cleanup(vb_registry* manager)
+void vbz_registry_cleanup(vbz_registry* manager)
 {
 if(!manager) return;
 if(!manager->handler)
@@ -177,7 +173,7 @@ if(!handler) return;
 if(!handler->implementation.cleanup) return;
 handler->implementation.cleanup(handler);
 }
-void vbz_registry_reset(vb_registry* manager)
+void vbz_registry_reset(vbz_registry* manager)
 {
 if(!manager) return;
 manager->handler=NULL;
@@ -186,6 +182,7 @@ manager->count=0;
 vb_result vbz_initialise_handler(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
+if(!voice->config.handler_preference) return vbz_initialise_any_handler(voice);
 vb_result rc=vbz_initialise_preferred_handler(voice);
 if(rc==vbr_ok) return rc;
 if(!voice->config.handler_fallback) return vbr_init_failed;
@@ -221,7 +218,7 @@ if(!handler->implementation.initialise) return 0;
 if(!handler->implementation.cleanup) return 0;
 return 1;
 }
-vb_result vbz_handler_prepare_registration(vb_registry* registry)
+vb_result vbz_handler_prepare_registration(vbz_registry* registry)
 {
 if(!registry) return vbr_invalid_args;
 int c=registry->count+1;

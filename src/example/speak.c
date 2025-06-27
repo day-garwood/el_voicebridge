@@ -13,7 +13,7 @@ printf("Error allocating memory.");
 getchar();
 return 0;
 }
-vb_result rc=vb_speaker_initialise(&s, NULL);
+vb_result rc=vb_speaker_initialise(&s, NULL, 0);
 if(rc!=vbr_ok)
 {
 printf("Error initialising speech subsystem: %d.", rc);
