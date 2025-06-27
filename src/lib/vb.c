@@ -96,6 +96,7 @@ void vb_speaker_cleanup(vb_speaker* voice)
 if(!voice) return;
 vb_speaker_stop(voice);
 vbz_registry_cleanup(&voice->registry);
+vbz_config_cleanup(&voice->config);
 }
 
 vb_result vb_handler_implement_initialise(vb_handler* handler, vb_handler_cb_initialise initialise)
@@ -175,6 +176,15 @@ if(!config) return vbr_invalid_args;
 config->begin=vbz_config_begin;
 config->end=vbz_config_end;
 return vbr_ok;
+}
+void vbz_config_cleanup(vbz_config* config)
+{
+if(!vbz_config_is_initialised(config)) return;
+free(config->handler_preference);
+config->handler_preference=NULL;
+config->handler_fallback=0;
+config->begin=0;
+config->end=0;
 }
 int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id)
 {

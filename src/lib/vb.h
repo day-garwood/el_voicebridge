@@ -287,6 +287,13 @@ Should only be called when object is fully initialised.
 
 vb_result vbz_config_set_state_init(vbz_config* config);
 
+/*
+vbz_config_cleanup
+Clean up an initialised config.
+*/
+
+void vbz_config_cleanup(vbz_config* config);
+
 /* +++ Registry methods */
 
 /*
