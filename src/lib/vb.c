@@ -31,8 +31,8 @@ vb_result vb_handler_register(vb_speaker* voice, char* id, vb_handler* handler)
 {
 if(!voice) return vbr_invalid_args;
 if((!id)||(!*id)) return vbr_invalid_args;
-if(!vbz_handler_is_valid_id(id)) return vbr_handler_id_invalid;
-if(vbz_find_handler_by_id(&voice->registry, id)>-1) return vbr_handler_id_taken;
+if(!vbz_is_valid_id(id)) return vbr_handler_id_invalid;
+if(vbz_registry_find_handler_by_id(&voice->registry, id)>-1) return vbr_handler_id_taken;
 if(!handler) return vbr_invalid_args;
 if(!vbz_handler_is_usable(handler)) return vbr_handler_invalid;
 char* new=vbz_strdup(id);
@@ -109,9 +109,59 @@ vb_speaker_stop(voice);
 vbz_registry_cleanup(&voice->registry);
 }
 
+vb_result vb_handler_implement_initialise(vb_handler* handler, vb_handler_cb_initialise initialise)
+{
+if(!handler) return vbr_invalid_args;
+if(!initialise) return vbr_invalid_args;
+handler->implementation.initialise=initialise;
+return vbr_ok;
+}
+vb_result vb_handler_implement_speak(vb_handler* handler, vb_handler_cb_speak speak)
+{
+if(!handler) return vbr_invalid_args;
+if(!speak) return vbr_invalid_args;
+handler->implementation.speak=speak;
+return vbr_ok;
+}
+vb_result vb_handler_implement_stop(vb_handler* handler, vb_handler_cb_stop stop)
+{
+if(!handler) return vbr_invalid_args;
+if(!stop) return vbr_invalid_args;
+handler->implementation.stop=stop;
+return vbr_ok;
+}
+vb_result vb_handler_implement_is_speaking(vb_handler* handler, vb_handler_cb_is_speaking is_speaking)
+{
+if(!handler) return vbr_invalid_args;
+if(!is_speaking) return vbr_invalid_args;
+handler->implementation.is_speaking=is_speaking;
+return vbr_ok;
+}
+vb_result vb_handler_implement_pause(vb_handler* handler, vb_handler_cb_pause pause)
+{
+if(!handler) return vbr_invalid_args;
+if(!pause) return vbr_invalid_args;
+handler->implementation.pause=pause;
+return vbr_ok;
+}
+vb_result vb_handler_implement_resume(vb_handler* handler, vb_handler_cb_resume resume)
+{
+if(!handler) return vbr_invalid_args;
+if(!resume) return vbr_invalid_args;
+handler->implementation.resume=resume;
+return vbr_ok;
+}
+vb_result vb_handler_implement_cleanup(vb_handler* handler, vb_handler_cb_cleanup cleanup)
+{
+if(!handler) return vbr_invalid_args;
+if(!cleanup) return vbr_invalid_args;
+handler->implementation.cleanup=cleanup;
+return vbr_ok;
+}
+
 /* Internal implementation */
 
-int vbz_find_handler_by_id(vbz_registry* manager, char* id)
+int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id)
 {
 if(!manager) return -1;
 for(int x=0; x<manager->count; x++)
@@ -121,10 +171,9 @@ return x;
 }
 return -1;
 }
-int vbz_handler_is_valid_id(char* id)
+int vbz_is_valid_id(char* id)
 {
-if(!id) return 0;
-if(id[0]==0) return 0;
+if((!id)||(!*id)) return 0;
 for(int x=0; x<strlen(id); x++)
 {
 if(isalnum(id[x])) continue;
@@ -158,7 +207,7 @@ if(handler->id) free(handler->id);
 handler->id=NULL;
 vbz_handler_implementation_reset(&handler->implementation);
 }
-void vbz_handler_implementation_reset(vb_handler_interface* i)
+void vbz_handler_implementation_reset(vbz_handler_interface* i)
 {
 if(!i) return;
 i->initialise=NULL;
@@ -192,7 +241,7 @@ vb_result vbz_initialise_preferred_handler(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
 if(!voice->config.handler_preference) return vbr_init_failed;
-int id=vbz_find_handler_by_id(&voice->registry, voice->config.handler_preference);
+int id=vbz_registry_find_handler_by_id(&voice->registry, voice->config.handler_preference);
 if(id<0) return vbr_init_failed;
 if(!voice->registry.handler[id].implementation.initialise) return vbr_init_failed;
 if(!voice->registry.handler[id].implementation.initialise(&voice->registry.handler[id])) return vbr_init_failed;

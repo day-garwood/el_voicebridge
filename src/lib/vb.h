@@ -30,22 +30,22 @@ The only object you need to store is the vb_speaker object.
 Everything else (strings, configs, handlers) is copied internally.
 */
 
-/* Structures */
+/* ++ Typedefs */
+
+/* +++ Aliases to internal structs */
+/* This is probably the closest to opaqueness we'll get in a single .c/.h pair. */
 
 /*
 vb_speaker is the main object you will be working with.
-Internally, it holds a copy of the configuration, the handler registry, and a reference to the handler currently in use.
-These members should not be touched in an external contexts.
 */
-typedef struct vbz_speaker vb_speaker;
 
+typedef struct vbz_speaker vb_speaker;
 
 /*
 vb_handler is what you will use to build your own handler.
-Internally, it has a name, an interface, and any extra data used for controlling the TTS engine.
 How to use:
 1. Implement your functions
-2. Pass these to handler.implementation.
+2. Pass them to the appropriate vb_handler_implement functions.
 3. Call vb_handler_register.
 See the dummy handler example in the example/handlers directory.
 Note that you may not need to do this, unless you need to support a specific handler that isn't supported here.
@@ -53,28 +53,9 @@ Note that you may not need to do this, unless you need to support a specific han
 
 typedef struct vbz_handler vb_handler;
 
-/* Public facing structures */
+/* +++ Enums */
 
-/*
-The vb_handler_interface struct is what holds pointers to all the functions that a handler should implement.
-The public API merely initialises a handler and uses its interface to call the underlying functions.
-For a handler to be considered usable, it must at least have initialise, speak, and cleanup functions.
-*/
-typedef struct
-{
-int (*initialise) (vb_handler* handler);
-int (*speak) (vb_handler* handler, char* text, int interrupt);
-int (*stop) (vb_handler* handler);
-int (*is_speaking) (vb_handler* handler);
-int (*pause) (vb_handler* handler);
-int (*resume) (vb_handler* handler);
-void (*cleanup) (vb_handler* handler);
-}
-vb_handler_interface;
-
-/* Enums */
-
-/* Error codes */
+/* ++++ Error codes */
 
 /* Todo: Handlers currently return bools. Failure at the API level is represented by init_failed or handler_failed. This needs a redesign. */
 
@@ -95,7 +76,20 @@ vbr_speaking, /* Used to query speaking status. */
 }
 vb_result;
 
-/* Functions */
+/* +++ Function pointers */
+/* These are used for the handler implementation. */
+
+typedef int (*vb_handler_cb_initialise) (vb_handler* handler);
+typedef int (*vb_handler_cb_speak) (vb_handler* handler, char* text, int interrupt);
+typedef int (*vb_handler_cb_stop) (vb_handler* handler);
+typedef int (*vb_handler_cb_is_speaking) (vb_handler* handler);
+typedef int (*vb_handler_cb_pause) (vb_handler* handler);
+typedef int (*vb_handler_cb_resume) (vb_handler* handler);
+typedef void (*vb_handler_cb_cleanup) (vb_handler* handler);
+
+/* ++ Functions */
+
+/* +++ Speaker API */
 
 /*
 vb_speaker_initialise
@@ -179,9 +173,20 @@ Completely cleans up and destroys the speaker object.
 
 void vb_speaker_cleanup(vb_speaker* voice);
 
-/* + Internal data */
+/* +++ Handler API */
+/* These functions should be used to implement the handler interface. */
 
-/* Structures */
+vb_result vb_handler_implement_initialise(vb_handler* handler, vb_handler_cb_initialise initialise);
+vb_result vb_handler_implement_speak(vb_handler* handler, vb_handler_cb_speak speak);
+vb_result vb_handler_implement_stop(vb_handler* handler, vb_handler_cb_stop stop);
+vb_result vb_handler_implement_is_speaking(vb_handler* handler, vb_handler_cb_is_speaking is_speaking);
+vb_result vb_handler_implement_pause(vb_handler* handler, vb_handler_cb_pause pause);
+vb_result vb_handler_implement_resume(vb_handler* handler, vb_handler_cb_resume resume);
+vb_result vb_handler_implement_cleanup(vb_handler* handler, vb_handler_cb_cleanup cleanup);
+
+/* + Internal data: All internal data starts with "vbz_". */
+
+/* ++ Structures */
 
 /*
 vbz_config is a way to configure the speech system you're about to initialise.
@@ -195,13 +200,32 @@ int handler_fallback; /* 0 to disallow fallbacks, or non-zero to allow them. */
 vbz_config;
 
 /*
-vb_handler: See above.
+The vb_handler_interface struct is what holds pointers to all the functions that a handler should implement.
+These should be implemented using the functions laid out in the public API above.
+The speaker API merely initialises a handler and uses its interface to call the underlying functions.
+For a handler to be considered usable, it must at least have initialise, speak, and cleanup functions.
+*/
+typedef struct
+{
+vb_handler_cb_initialise initialise;
+vb_handler_cb_speak speak;
+vb_handler_cb_stop stop;
+vb_handler_cb_is_speaking is_speaking;
+vb_handler_cb_pause pause;
+vb_handler_cb_resume resume;
+vb_handler_cb_cleanup cleanup;
+}
+vbz_handler_interface;
+
+/*
+vbz_handler: Internal definition of vb_handler declared above.
+Internally, it has a name, an interface, and any extra data used for controlling the TTS engine.
 */
 
 struct vbz_handler
 {
 char* id;
-vb_handler_interface implementation;
+vbz_handler_interface implementation;
 void* data;
 };
 
@@ -217,7 +241,8 @@ int count;
 vbz_registry;
 
 /*
-vbz_speaker: See above.
+vbz_speaker: Internal definition of alias vb_speaker above.
+Internally, it holds a copy of the configuration, the handler registry, and a reference to the handler currently in use.
 */
 
 struct vbz_speaker
@@ -227,8 +252,9 @@ vbz_registry registry;
 vb_handler* current_handler;
 };
 
+/* ++ Functions */
 
-/* Functions: All internal functions should begin with an underscore. */
+/* +++ Config methods */
 
 /*
 vbz_config_initialise
@@ -237,20 +263,22 @@ The config structure is initialised to sensible defaults.
 
 vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback);
 
+/* +++ Registry methods */
+
 /*
 vbz_find_handler_by_id
 Attempts to find a handler index by its textual ID.
 Returns -1 if no handler is found.
 */
 
-int vbz_find_handler_by_id(vbz_registry* manager, char* id);
+int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id);
 
 /*
-vbz_handler_is_valid_id
-Checks if text matches a valid handler ID format (alphanumeric, dash, dot, or underscore).
+vbz_handler_prepare_registration
+Allocates memory for a new handler to be registered in the registry.
 */
 
-int vbz_handler_is_valid_id(char* id);
+vb_result vbz_handler_prepare_registration(vbz_registry* registry);
 
 /*
 vbz_registry_cleanup
@@ -258,6 +286,23 @@ Cleans up a registry.
 */
 
 void vbz_registry_cleanup(vbz_registry* manager);
+
+/*
+vbz_registry_reset
+Used before initialisation and after cleanup: Simply initialises all the object properties to NULL, 0 etc.
+*/
+
+void vbz_registry_reset(vbz_registry* manager);
+
+/* +++ Handler methods */
+
+/*
+vbz_handler_is_usable
+Looks for certain functions in the handler. If they are missing, it is considered unusable.
+See "vb_handler_register" above.
+*/
+
+int vbz_handler_is_usable(vb_handler* handler);
 
 /*
 vbz_handler_unregister
@@ -268,13 +313,6 @@ Note this clears out everything to do with a handle, including its textual ID an
 void vbz_handler_unregister(vb_handler* handler);
 
 /*
-vbz_handler_implementation_reset
-Used before initialisation and after cleanup: Simply initialises all the pointers to NULL.
-*/
-
-void vbz_handler_implementation_reset(vb_handler_interface* i);
-
-/*
 vbz_handler_cleanup
 Cleans up data from a single handler.
 Note it doesn't clear out the name or implementation, in case we want to use it again.
@@ -283,12 +321,16 @@ Its only purpose is to clear out the engine and data associated with it.
 
 void vbz_handler_cleanup(vb_handler* handler);
 
+/* +++ Handler implementation methods */
+
 /*
-vbz_registry_reset
-Used before initialisation and after cleanup: Simply initialises all the object properties to NULL, 0 etc.
+vbz_handler_implementation_reset
+Used before initialisation and after cleanup: Simply initialises all the pointers to NULL.
 */
 
-void vbz_registry_reset(vbz_registry* manager);
+void vbz_handler_implementation_reset(vbz_handler_interface* i);
+
+/* +++ Speaker methods */
 
 /*
 vbz_initialise_handler
@@ -315,20 +357,26 @@ If this function fails, it means there are no available speech engine handlers t
 
 vb_result vbz_initialise_any_handler(vb_speaker* voice);
 
-/*
-vbz_handler_is_usable
-Looks for certain functions in the handler. If they are missing, it is considered unusable.
-See "vb_handler_register" above.
-*/
-
-int vbz_handler_is_usable(vb_handler* handler);
+/* +++ Helper functions */
 
 /*
-vbz_handler_prepare_registration
-Allocates memory for a new handler to be registered in the registry.
+These are mainly string/text-based functions, used for ID validation and comparison.
 */
 
-vb_result vbz_handler_prepare_registration(vbz_registry* registry);
+/*
+vbz_handler_is_valid_id
+Checks if text matches a valid handler ID format (alphanumeric, dash, dot, or underscore).
+*/
+
+int vbz_is_valid_id(char* id);
+
+/* Case-insensitive enabled string compare */
+
+int vbz_strcmp(char* a, char* b, int cs);
+
+/* Not all compilers have strdup, so we implement it. */
+
+char* vbz_strdup(char* str);
 
 /* + Builtin handler implementations */
 
@@ -337,11 +385,11 @@ Since we are using runtime linking rather than compiletime, we have linking data
 These linkers contain pointers to relevant libraries and procedures that will be loaded.
 */
 
-/* Windows-specific handlers */
+/* ++ Windows-specific handlers */
 
 #ifdef _WIN32
 
-/* Structures */
+/* +++ Structures */
 
 /* vbz_com is a linker struct to help us deal with COM more efficiently. */
 
@@ -363,16 +411,16 @@ WCHAR* text_to_speak;
 }
 vbz_sapi_handler;
 
-/* Functions */
+/* +++ Functions */
 
-/* Com helpers */
+/* ++++ Com helpers */
 
 int vbz_com_initialise(vbz_com* com);
 void vbz_com_reset(vbz_com* com);
 int vbz_com_create_instance(vbz_com* com, CLSID* clsid, IID* iid, void** data);
 void vbz_com_cleanup(vbz_com* com);
 
-/* SAPI handler */
+/* ++++ SAPI handler */
 
 int vbz_sapi_initialise(vb_handler* handler);
 int vbz_sapi_speak(vb_handler* handler, char* text, int interrupt);
@@ -384,11 +432,11 @@ void vbz_sapi_cleanup(vb_handler* handler);
 
 #endif
 
-/* Apple-specific handlers */
+/* ++ Apple-specific handlers */
 
 #ifdef __APPLE__
 
-/* Structures */
+/* +++ Structures */
 
 /*
 Just like we did with COM above, we now have a linker for Objective-C functionality.
@@ -414,15 +462,15 @@ id voice;
 }
 vbz_mac_handler;
 
-/* Functions */
+/* +++ Functions */
 
-/* ObjC helpers */
+/* ++++ ObjC helpers */
 
 int vbz_objc_initialise(vbz_objc* objc);
 void vbz_objc_reset(vbz_objc* objc);
 void vbz_objc_cleanup(vbz_objc* objc);
 
-/* Mac handler */
+/* ++++ Mac handler */
 
 int vbz_mac_initialise(vb_handler* handler);
 int vbz_mac_speak(vb_handler* handler, char* text, int interrupt);
@@ -434,7 +482,7 @@ void vbz_mac_cleanup(vb_handler* handler);
 
 #endif
 
-/* Linux-specific handlers */
+/* ++ Linux-specific handlers */
 
 /*
 Todo: Find a decent speech library to integrate here.
@@ -456,19 +504,5 @@ vb_result vbz_register_internal_handlers(vb_speaker* voice);
 
 vb_result vbz_mac_register_handler(vb_speaker* voice);
 vb_result vbz_sapi_register_handler(vb_speaker* voice);
-
-/* + Helper functions */
-
-/*
-These are mainly string/text-based functions, used for ID validation and comparison.
-*/
-
-/* Case-insensitive enabled string compare */
-
-int vbz_strcmp(char* a, char* b, int cs);
-
-/* Not all compilers have strdup, so we implement it. */
-
-char* vbz_strdup(char* str);
 
 #endif
