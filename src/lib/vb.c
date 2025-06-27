@@ -641,7 +641,7 @@ sapi.implementation.pause=vbz_sapi_pause;
 sapi.implementation.resume=vbz_sapi_resume;
 sapi.implementation.is_speaking=vbz_sapi_is_speaking;
 sapi.implementation.cleanup=vbz_sapi_cleanup;
-return vb_handler_register(voice, "sapi", &sapi);
+return vb_handler_register(voice, "system", &sapi);
 #else
 return vbr_unsupported;
 #endif
@@ -661,7 +661,7 @@ mac.implementation.pause=vbz_mac_pause;
 mac.implementation.resume=vbz_mac_resume;
 mac.implementation.is_speaking=vbz_mac_is_speaking;
 mac.implementation.cleanup=vbz_mac_cleanup;
-return vb_handler_register(voice, "Mac-TTS", &mac);
+return vb_handler_register(voice, "system", &mac);
 #else
 return vbr_unsupported;
 #endif
