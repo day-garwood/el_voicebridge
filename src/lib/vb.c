@@ -238,6 +238,8 @@ if(!i) return;
 i->initialise=NULL;
 i->speak=NULL;
 i->stop=NULL;
+i->pause=NULL;
+i->resume=NULL;
 i->is_speaking=NULL;
 i->cleanup=NULL;
 }
