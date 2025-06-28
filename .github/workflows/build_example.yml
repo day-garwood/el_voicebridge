@@ -18,7 +18,7 @@ jobs:
       run: chmod +x speak
 
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: speak-ubuntu
         path: speak
@@ -39,7 +39,7 @@ jobs:
       run: chmod +x speak
 
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: speak-mac
         path: speak
