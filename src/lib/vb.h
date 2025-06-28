@@ -80,13 +80,13 @@ vb_result;
 /* +++ Function pointers */
 /* These are used for the handler implementation. */
 
-typedef int (*vb_handler_cb_initialise) (vb_handler* handler);
+typedef int (*vb_handler_cb_load) (vb_handler* handler);
 typedef int (*vb_handler_cb_speak) (vb_handler* handler, char* text, int interrupt);
 typedef int (*vb_handler_cb_stop) (vb_handler* handler);
 typedef int (*vb_handler_cb_is_speaking) (vb_handler* handler);
 typedef int (*vb_handler_cb_pause) (vb_handler* handler);
 typedef int (*vb_handler_cb_resume) (vb_handler* handler);
-typedef void (*vb_handler_cb_cleanup) (vb_handler* handler);
+typedef void (*vb_handler_cb_unload) (vb_handler* handler);
 
 /* ++ Functions */
 
@@ -100,21 +100,21 @@ Registers builtin handlers and configures the system.
 vb_result vb_speaker_initialise(vb_speaker* voice, char* handler, int allow_fallback);
 
 /*
-vb_handler_register
+vb_speaker_register_handler
 Registers external handlers.
 This must be called after vb_speaker_initialise and before vb_speaker_start.
-For a handler to be considered usable, it must at least have initialise, speak, and cleanup functions.
+For a handler to be considered usable, it must at least have load and unload functions.
 If any of these functions are missing, registration will fail with vbr_handler_invalid.
 */
 
-vb_result vb_handler_register(vb_speaker* voice, char* id, vb_handler* handler);
+vb_result vb_speaker_register_handler(vb_speaker* voice, char* id, vb_handler* handler);
 
 /*
-vb_speaker_start
+vb_speaker_load
 Initialises an appropriate handler ready for use.
 */
 
-vb_result vb_speaker_start(vb_speaker* voice);
+vb_result vb_speaker_load(vb_speaker* voice);
 
 /*
 Please note that the below functions are merely wrappers to call the handler's equivalent function.
@@ -123,49 +123,49 @@ Be sure to check for vbr_unsupported when checking your return types.
 */
 
 /*
-vb_speak
+vb_speaker_speak
 Speaks a string of text.
 Interrupt: 0 to queue, 1 to interrupt.
 */
 
-vb_result vb_speak(vb_speaker* voice, char* text, int interrupt);
-
-/*
-vb_stop
-Stops speech.
-*/
-
-vb_result vb_stop(vb_speaker* voice);
-
-/*
-vb_pause
-Pauses speech.
-*/
-
-vb_result vb_pause(vb_speaker* voice);
-
-/*
-vb_resume
-Resumes speech.
-*/
-
-vb_result vb_resume(vb_speaker* voice);
-
-/*
-vb_is_speaking
-Queries the speaking status of the engine.
-*/
-
-vb_result vb_is_speaking(vb_speaker* voice);
+vb_result vb_speaker_speak(vb_speaker* voice, char* text, int interrupt);
 
 /*
 vb_speaker_stop
+Stops speech.
+*/
+
+vb_result vb_speaker_stop(vb_speaker* voice);
+
+/*
+vb_speaker_pause
+Pauses speech.
+*/
+
+vb_result vb_speaker_pause(vb_speaker* voice);
+
+/*
+vb_speaker_resume
+Resumes speech.
+*/
+
+vb_result vb_speaker_resume(vb_speaker* voice);
+
+/*
+vb_speaker_is_speaking
+Queries the speaking status of the engine.
+*/
+
+vb_result vb_speaker_is_speaking(vb_speaker* voice);
+
+/*
+vb_speaker_unload
 Closes the currently speech engine.
 This is useful if you want to change handlers.
 Todo: create change_handler wrapper.
 */
 
-vb_result vb_speaker_stop(vb_speaker* voice);
+vb_result vb_speaker_unload(vb_speaker* voice);
 
 /*
 vb_speaker_cleanup
@@ -177,13 +177,13 @@ void vb_speaker_cleanup(vb_speaker* voice);
 /* +++ Handler API */
 /* These functions should be used to implement the handler interface. */
 
-vb_result vb_handler_implement_initialise(vb_handler* handler, vb_handler_cb_initialise initialise);
+vb_result vb_handler_implement_load(vb_handler* handler, vb_handler_cb_load load);
 vb_result vb_handler_implement_speak(vb_handler* handler, vb_handler_cb_speak speak);
 vb_result vb_handler_implement_stop(vb_handler* handler, vb_handler_cb_stop stop);
 vb_result vb_handler_implement_is_speaking(vb_handler* handler, vb_handler_cb_is_speaking is_speaking);
 vb_result vb_handler_implement_pause(vb_handler* handler, vb_handler_cb_pause pause);
 vb_result vb_handler_implement_resume(vb_handler* handler, vb_handler_cb_resume resume);
-vb_result vb_handler_implement_cleanup(vb_handler* handler, vb_handler_cb_cleanup cleanup);
+vb_result vb_handler_implement_unload(vb_handler* handler, vb_handler_cb_unload unload);
 
 /* + Internal data: All internal data starts with "vbz_". */
 
@@ -216,13 +216,13 @@ For a handler to be considered usable, it must at least have initialise, speak, 
 */
 typedef struct
 {
-vb_handler_cb_initialise initialise;
+vb_handler_cb_load load;
 vb_handler_cb_speak speak;
 vb_handler_cb_stop stop;
 vb_handler_cb_is_speaking is_speaking;
 vb_handler_cb_pause pause;
 vb_handler_cb_resume resume;
-vb_handler_cb_cleanup cleanup;
+vb_handler_cb_unload unload;
 }
 vbz_handler_interface;
 
@@ -297,7 +297,7 @@ void vbz_config_cleanup(vbz_config* config);
 /* +++ Registry methods */
 
 /*
-vbz_find_handler_by_id
+vbz_registry_find_handler_by_id
 Attempts to find a handler index by its textual ID.
 Returns -1 if no handler is found.
 */
@@ -305,11 +305,11 @@ Returns -1 if no handler is found.
 int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id);
 
 /*
-vbz_handler_prepare_registration
+vbz_registry_ensure_capacity
 Allocates memory for a new handler to be registered in the registry.
 */
 
-vb_result vbz_handler_prepare_registration(vbz_registry* registry);
+vb_result vbz_registry_ensure_capacity(vbz_registry* registry);
 
 /*
 vbz_registry_cleanup
@@ -336,18 +336,18 @@ See "vb_handler_register" above.
 int vbz_handler_is_usable(vb_handler* handler);
 
 /*
-vbz_handler_unregister
-Unregisters a handler from the registry. This is used during cleanup.
-Note this clears out everything to do with a handle, including its textual ID and interface.
-*/
-
-void vbz_handler_unregister(vb_handler* handler);
-
-/*
-vbz_handler_cleanup
-Cleans up data from a single handler.
+vbz_handler_unload
+Unloads voice data from a handler.
 Note it doesn't clear out the name or implementation, in case we want to use it again.
 Its only purpose is to clear out the engine and data associated with it.
+*/
+
+void vbz_handler_unload(vb_handler* handler);
+
+/*
+vbz_handler_ucleanup
+Cleans up generic handler data.
+Note this clears out everything to do with a handle, including its textual ID and interface.
 */
 
 void vbz_handler_cleanup(vb_handler* handler);
@@ -364,29 +364,29 @@ void vbz_handler_implementation_reset(vbz_handler_interface* i);
 /* +++ Speaker methods */
 
 /*
-vbz_initialise_handler
-Initialises an appropriate handler for use based on the configuration settings.
+vbz_speaker_load_handler
+Loads an appropriate handler for use based on the configuration settings.
 At the moment, the public-facing vb_speaker_start wraps this function.
 */
 
-vb_result vbz_initialise_handler(vb_speaker* voice);
+vb_result vbz_speaker_load_handler(vb_speaker* voice);
 
 /*
-vbz_initialise_preferred_handler
-Attempts to initialise the preferred handler.
+vbz_speaker_load_preferred_handler
+Attempts to load the preferred handler.
 If this function fails, it returns vbr_init_failed.
 This includes if a preferred ID can't be found, or even is unset.
 */
 
-vb_result vbz_initialise_preferred_handler(vb_speaker* voice);
+vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice);
 
 /*
-vbz_initialise_any_handler
-Attempts to initialise any handler by walking through the registry in order.
+vbz_speaker_load_any_handler
+Attempts to load any handler by walking through the registry in order.
 If this function fails, it means there are no available speech engine handlers that can be used.
 */
 
-vb_result vbz_initialise_any_handler(vb_speaker* voice);
+vb_result vbz_speaker_load_any_handler(vb_speaker* voice);
 
 /* +++ Helper functions */
 

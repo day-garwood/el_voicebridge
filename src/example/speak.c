@@ -21,7 +21,7 @@ getchar();
 free(text);
 return 0;
 }
-rc=vb_speaker_start(&s);
+rc=vb_speaker_load(&s);
 if(rc!=vbr_ok)
 {
 printf("Error starting speech subsystem: %d.", rc);
@@ -34,7 +34,7 @@ while(1)
 printf("Please enter some text.\n");
 fgets(text, 1023, stdin);
 if(text[0]==10) break;
-vb_speak(&s, text, 0);
+vb_speaker_speak(&s, text, 0);
 printf("Speaking...Please press enter to continue.\n");
 getchar();
 }
