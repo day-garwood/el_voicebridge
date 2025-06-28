@@ -7,14 +7,23 @@
 vb_result vb_speaker_initialise(vb_speaker* voice, char* voice_preference, int allow_fallback)
 {
 if(!voice) return vbr_invalid_args;
-vbz_config c;
-vb_result rc=vbz_config_initialise(&c, voice_preference, allow_fallback);
+if(vbz_speaker_is_initialised(voice)) return vbr_already_initialised;
+vb_result rc=vbz_config_initialise(&voice->config, voice_preference, allow_fallback);
 if(rc!=vbr_ok) return rc;
-vbz_registry_reset(&voice->registry);
+rc=vbz_registry_initialise(&voice->registry);
+if(rc!=vbr_ok)
+{
+vbz_config_cleanup(&voice->config);
+return rc;
+}
 rc=vbz_register_internal_handlers(voice);
-if(rc!=vbr_ok) return rc;
-voice->config=c;
-return vbr_ok;
+if(rc!=vbr_ok)
+{
+vbz_config_cleanup(&voice->config);
+vbz_registry_cleanup(&voice->registry);
+return rc;
+}
+return vbz_speaker_set_state_init(voice);
 }
 vb_result vb_speaker_register_handler(vb_speaker* voice, char* id, vb_handler* handler)
 {
@@ -47,40 +56,45 @@ if(!voice) return vbr_invalid_args;
 if(!text) return vbr_invalid_args;
 if((interrupt<0)||(interrupt>1)) return vbr_invalid_args;
 if(!voice->current_handler) return vbr_not_initialised;
-if(!voice->current_handler->implementation.speak) return vbr_unsupported;
-if(!voice->current_handler->implementation.speak(voice->current_handler, text, interrupt)) return vbr_handler_failed;
+if(!vbz_handler_callback_is_set(&voice->current_handler->implementation.speak)) return vbr_unsupported;
+vb_handler_cb_speak speak=voice->current_handler->implementation.speak.exec;
+if(!speak(voice->current_handler, text, interrupt)) return vbr_handler_failed;
 return vbr_ok;
 }
 vb_result vb_speaker_stop(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
 if(!voice->current_handler) return vbr_not_initialised;
-if(!voice->current_handler->implementation.stop) return vbr_unsupported;
-if(!voice->current_handler->implementation.stop(voice->current_handler)) return vbr_handler_failed;
+if(!vbz_handler_callback_is_set(&voice->current_handler->implementation.stop)) return vbr_unsupported;
+vb_handler_cb_stop stop=voice->current_handler->implementation.stop.exec;
+if(!stop(voice->current_handler)) return vbr_handler_failed;
 return vbr_ok;
 }
 vb_result vb_speaker_pause(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
 if(!voice->current_handler) return vbr_not_initialised;
-if(!voice->current_handler->implementation.pause) return vbr_unsupported;
-if(!voice->current_handler->implementation.pause(voice->current_handler)) return vbr_handler_failed;
+if(!vbz_handler_callback_is_set(&voice->current_handler->implementation.pause)) return vbr_unsupported;
+vb_handler_cb_pause pause=voice->current_handler->implementation.pause.exec;
+if(!pause(voice->current_handler)) return vbr_handler_failed;
 return vbr_ok;
 }
 vb_result vb_speaker_resume(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
 if(!voice->current_handler) return vbr_not_initialised;
-if(!voice->current_handler->implementation.resume) return vbr_unsupported;
-if(!voice->current_handler->implementation.resume(voice->current_handler)) return vbr_handler_failed;
+if(!vbz_handler_callback_is_set(&voice->current_handler->implementation.resume)) return vbr_unsupported;
+vb_handler_cb_resume resume=voice->current_handler->implementation.resume.exec;
+if(!resume(voice->current_handler)) return vbr_handler_failed;
 return vbr_ok;
 }
 vb_result vb_speaker_is_speaking(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
 if(!voice->current_handler) return vbr_not_initialised;
-if(!voice->current_handler->implementation.is_speaking) return vbr_unsupported;
-if(!voice->current_handler->implementation.is_speaking(voice->current_handler)) return vbr_ok;
+if(!vbz_handler_callback_is_set(&voice->current_handler->implementation.is_speaking)) return vbr_unsupported;
+vb_handler_cb_is_speaking is_speaking=voice->current_handler->implementation.is_speaking.exec;
+if(!is_speaking(voice->current_handler)) return vbr_ok;
 return vbr_speaking;
 }
 vb_result vb_speaker_unload(vb_speaker* voice)
@@ -97,60 +111,108 @@ if(!voice) return;
 vb_speaker_unload(voice);
 vbz_registry_cleanup(&voice->registry);
 vbz_config_cleanup(&voice->config);
+voice->begin=0;
+voice->end=0;
 }
 
 vb_result vb_handler_implement_load(vb_handler* handler, vb_handler_cb_load load)
 {
 if(!handler) return vbr_invalid_args;
 if(!load) return vbr_invalid_args;
-handler->implementation.load=load;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.load, load);
 }
 vb_result vb_handler_implement_speak(vb_handler* handler, vb_handler_cb_speak speak)
 {
 if(!handler) return vbr_invalid_args;
 if(!speak) return vbr_invalid_args;
-handler->implementation.speak=speak;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.speak, speak);
 }
 vb_result vb_handler_implement_stop(vb_handler* handler, vb_handler_cb_stop stop)
 {
 if(!handler) return vbr_invalid_args;
 if(!stop) return vbr_invalid_args;
-handler->implementation.stop=stop;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.stop, stop);
 }
 vb_result vb_handler_implement_is_speaking(vb_handler* handler, vb_handler_cb_is_speaking is_speaking)
 {
 if(!handler) return vbr_invalid_args;
 if(!is_speaking) return vbr_invalid_args;
-handler->implementation.is_speaking=is_speaking;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.is_speaking, is_speaking);
 }
 vb_result vb_handler_implement_pause(vb_handler* handler, vb_handler_cb_pause pause)
 {
 if(!handler) return vbr_invalid_args;
 if(!pause) return vbr_invalid_args;
-handler->implementation.pause=pause;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.pause, pause);
 }
 vb_result vb_handler_implement_resume(vb_handler* handler, vb_handler_cb_resume resume)
 {
 if(!handler) return vbr_invalid_args;
 if(!resume) return vbr_invalid_args;
-handler->implementation.resume=resume;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.resume, resume);
 }
 vb_result vb_handler_implement_unload(vb_handler* handler, vb_handler_cb_unload unload)
 {
 if(!handler) return vbr_invalid_args;
 if(!unload) return vbr_invalid_args;
-handler->implementation.unload=unload;
-return vbr_ok;
+if(!vbz_handler_is_initialised(handler)) vbz_handler_initialise(handler);
+return vbz_handler_callback_set(&handler->implementation.unload, unload);
 }
 
 /* Internal implementation */
 
+int vbz_speaker_is_initialised(vb_speaker* speaker)
+{
+if(!speaker) return 0;
+if(speaker->begin!=vbz_speaker_begin) return 0;
+if(speaker->end!=vbz_speaker_end) return 0;
+return 1;
+}
+vb_result vbz_speaker_set_state_init(vb_speaker* speaker)
+{
+if(!speaker) return vbr_invalid_args;
+speaker->begin=vbz_speaker_begin;
+speaker->end=vbz_speaker_end;
+return vbr_ok;
+}
+vb_result vbz_speaker_load_handler(vb_speaker* voice)
+{
+if(!voice) return vbr_invalid_args;
+if(!voice->config.handler_preference) return vbz_speaker_load_any_handler(voice);
+vb_result rc=vbz_speaker_load_preferred_handler(voice);
+if(rc==vbr_ok) return rc;
+if(!voice->config.handler_fallback) return vbr_initialisation_failed;
+return vbz_speaker_load_any_handler(voice);
+}
+vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice)
+{
+if(!voice) return vbr_invalid_args;
+if(!voice->config.handler_preference) return vbr_initialisation_failed;
+int id=vbz_registry_find_handler_by_id(&voice->registry, voice->config.handler_preference);
+if(id<0) return vbr_initialisation_failed;
+vb_result rc=vbz_handler_load(&voice->registry.handler[id]);
+if(rc!=vbr_ok) return rc;
+voice->current_handler=&voice->registry.handler[id];
+return vbr_ok;
+}
+vb_result vbz_speaker_load_any_handler(vb_speaker* voice)
+{
+if(!voice) return vbr_invalid_args;
+for(int x=0; x<voice->registry.count; x++)
+{
+vb_result rc=vbz_handler_load(&voice->registry.handler[x]);
+if(rc!=vbr_ok) continue;
+voice->current_handler=&voice->registry.handler[x];
+return vbr_ok;
+}
+return vbr_initialisation_failed;
+}
 vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback)
 {
 if(!config) return vbr_invalid_args;
@@ -185,6 +247,27 @@ config->handler_preference=NULL;
 config->handler_fallback=0;
 config->begin=0;
 config->end=0;
+}
+vb_result vbz_registry_initialise(vbz_registry* registry)
+{
+if(!registry) return vbr_invalid_args;
+if(vbz_registry_is_initialised(registry)) return vbr_already_initialised;
+vbz_registry_reset(registry);
+return vbz_registry_set_state_init(registry);
+}
+int vbz_registry_is_initialised(vbz_registry* registry)
+{
+if(!registry) return 0;
+if(registry->begin!=vbz_registry_begin) return 0;
+if(registry->end!=vbz_registry_end) return 0;
+return 1;
+}
+vb_result vbz_registry_set_state_init(vbz_registry* registry)
+{
+if(!registry) return vbr_invalid_args;
+registry->begin=vbz_registry_begin;
+registry->end=vbz_registry_end;
+return vbr_ok;
 }
 int vbz_registry_find_handler_by_id(vbz_registry* manager, char* id)
 {
@@ -226,69 +309,98 @@ void vbz_registry_reset(vbz_registry* manager)
 if(!manager) return;
 manager->handler=NULL;
 manager->count=0;
+manager->begin=0;
+manager->end=0;
+}
+vb_result vbz_handler_initialise(vb_handler* handler)
+{
+if(!handler) return vbr_invalid_args;
+if(vbz_handler_is_initialised(handler)) return vbr_already_initialised;
+vbz_handler_reset(handler);
+return vbz_handler_set_state_init(handler);
+}
+int vbz_handler_is_initialised(vb_handler* handler)
+{
+if(!handler) return 0;
+if(handler->begin!=vbz_handler_begin) return 0;
+if(handler->end!=vbz_handler_end) return 0;
+return 1;
+}
+vb_result vbz_handler_set_state_init(vb_handler* handler)
+{
+if(!handler) return vbr_invalid_args;
+handler->begin=vbz_handler_begin;
+handler->end=vbz_handler_end;
+return vbr_ok;
+}
+vb_result vbz_handler_load(vb_handler* handler)
+{
+if(!handler) return vbr_invalid_args;
+if(!vbz_handler_is_initialised(handler)) return vbr_not_initialised;
+if(!vbz_handler_callback_is_set(&handler->implementation.load)) return vbr_initialisation_failed;
+vb_handler_cb_load load=handler->implementation.load.exec;
+if(!load(handler)) return vbr_initialisation_failed;
+return vbr_ok;
 }
 int vbz_handler_is_usable(vb_handler* handler)
 {
 if(!handler) return 0;
-if(!handler->implementation.load) return 0;
-if(!handler->implementation.unload) return 0;
+if(!vbz_handler_callback_is_set(&handler->implementation.load)) return 0;
+if(!vbz_handler_callback_is_set(&handler->implementation.unload)) return 0;
 return 1;
 }
 void vbz_handler_unload(vb_handler* handler)
 {
 if(!handler) return;
-if(!handler->implementation.unload) return;
-handler->implementation.unload(handler);
+if(!vbz_handler_callback_is_set(&handler->implementation.unload)) return;
+vb_handler_cb_unload unload=handler->implementation.unload.exec;
+unload(handler);
 }
 void vbz_handler_cleanup(vb_handler* handler)
 {
 if(!handler) return;
 if(handler->id) free(handler->id);
+vbz_handler_reset(handler);
+}
+void vbz_handler_reset(vb_handler* handler)
+{
 handler->id=NULL;
 vbz_handler_implementation_reset(&handler->implementation);
+handler->begin=0;
+handler->end=0;
 }
 void vbz_handler_implementation_reset(vbz_handler_interface* i)
 {
 if(!i) return;
-i->load=NULL;
-i->speak=NULL;
-i->stop=NULL;
-i->pause=NULL;
-i->resume=NULL;
-i->is_speaking=NULL;
-i->unload=NULL;
+vbz_handler_callback_unset(&i->load);
+vbz_handler_callback_unset(&i->speak);
+vbz_handler_callback_unset(&i->stop);
+vbz_handler_callback_unset(&i->pause);
+vbz_handler_callback_unset(&i->resume);
+vbz_handler_callback_unset(&i->is_speaking);
+vbz_handler_callback_unset(&i->unload);
 }
-vb_result vbz_speaker_load_handler(vb_speaker* voice)
+vb_result vbz_handler_callback_set(vbz_handler_callback* cb, void* exec)
 {
-if(!voice) return vbr_invalid_args;
-if(!voice->config.handler_preference) return vbz_speaker_load_any_handler(voice);
-vb_result rc=vbz_speaker_load_preferred_handler(voice);
-if(rc==vbr_ok) return rc;
-if(!voice->config.handler_fallback) return vbr_initialisation_failed;
-return vbz_speaker_load_any_handler(voice);
-}
-vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice)
-{
-if(!voice) return vbr_invalid_args;
-if(!voice->config.handler_preference) return vbr_initialisation_failed;
-int id=vbz_registry_find_handler_by_id(&voice->registry, voice->config.handler_preference);
-if(id<0) return vbr_initialisation_failed;
-if(!voice->registry.handler[id].implementation.load) return vbr_initialisation_failed;
-if(!voice->registry.handler[id].implementation.load(&voice->registry.handler[id])) return vbr_initialisation_failed;
-voice->current_handler=&voice->registry.handler[id];
+if((!cb)||(!exec)) return vbr_invalid_args;
+cb->exec=exec;
+cb->begin=vbz_api_begin;
+cb->end=vbz_api_end;
 return vbr_ok;
 }
-vb_result vbz_speaker_load_any_handler(vb_speaker* voice)
+int vbz_handler_callback_is_set(vbz_handler_callback* cb)
 {
-if(!voice) return vbr_invalid_args;
-for(int x=0; x<voice->registry.count; x++)
-{
-if(!voice->registry.handler[x].implementation.load) continue;
-if(!voice->registry.handler[x].implementation.load(&voice->registry.handler[x])) continue;
-voice->current_handler=&voice->registry.handler[x];
-return vbr_ok;
+if(!cb) return 0;
+if(cb->begin!=vbz_api_begin) return 0;
+if(cb->end!=vbz_api_end) return 0;
+return 1;
 }
-return vbr_initialisation_failed;
+void vbz_handler_callback_unset(vbz_handler_callback* cb)
+{
+if(!cb) return;
+cb->exec=NULL;
+cb->begin=0;
+cb->end=0;
 }
 
 /* Builtin handler implementations */
@@ -679,10 +791,11 @@ handler->data=NULL;
 vb_result vbz_register_internal_handlers(vb_speaker* voice)
 {
 if(!voice) return vbr_invalid_args;
-vb_result result=vbr_ok;
-vb_result rc=result;
-rc=vbz_sapi_register_handler(voice);
+vb_result result=vbr_no_voices;
+vb_result rc=vbz_sapi_register_handler(voice);
+if(rc==vbr_ok) result=rc;
 rc=vbz_mac_register_handler(voice);
+if(rc==vbr_ok) result=rc;
 return result;
 }
 
@@ -693,13 +806,13 @@ vb_result vbz_sapi_register_handler(vb_speaker* voice)
 if(!voice) return vbr_invalid_args;
 #ifdef _WIN32
 vb_handler sapi;
-sapi.implementation.load=vbz_sapi_initialise;
-sapi.implementation.speak=vbz_sapi_speak;
-sapi.implementation.stop=vbz_sapi_stop;
-sapi.implementation.pause=vbz_sapi_pause;
-sapi.implementation.resume=vbz_sapi_resume;
-sapi.implementation.is_speaking=vbz_sapi_is_speaking;
-sapi.implementation.unload=vbz_sapi_cleanup;
+vb_handler_implement_load(&sapi, vbz_sapi_initialise);
+vb_handler_implement_speak(&sapi, vbz_sapi_speak);
+vb_handler_implement_stop(&sapi, vbz_sapi_stop);
+vb_handler_implement_pause(&sapi, vbz_sapi_pause);
+vb_handler_implement_resume(&sapi, vbz_sapi_resume);
+vb_handler_implement_is_speaking(&sapi, vbz_sapi_is_speaking);
+vb_handler_implement_unload(&sapi, vbz_sapi_cleanup);
 return vb_speaker_register_handler(voice, "system", &sapi);
 #else
 return vbr_unsupported;

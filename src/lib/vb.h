@@ -73,6 +73,7 @@ vbr_handler_invalid,
 vbr_handler_id_invalid,
 vbr_handler_id_taken,
 vbr_handler_failed,
+vbr_no_voices,
 vbr_speaking, /* Used to query speaking status. */
 }
 vb_result;
@@ -190,8 +191,16 @@ vb_result vb_handler_implement_unload(vb_handler* handler, vb_handler_cb_unload 
 /* ++ Macros: Magic numbers */
 /* These arbitrary, randomly generated numbers are used for fortifying struct data and memory. */
 
+#define vbz_speaker_begin 0x45C48DF2
+#define vbz_speaker_end 0x3D728CB1
 #define vbz_config_begin 0x724B8EE1
 #define vbz_config_end 0xAF471799
+#define vbz_registry_begin 0xB79E31DE
+#define vbz_registry_end 0x3707A89C
+#define vbz_handler_begin 0xA2227B52
+#define vbz_handler_end 0xFE14A3EF
+#define vbz_api_begin 0xAB4E790A
+#define vbz_api_end 0x5969CF6A
 
 /* ++ Structures */
 
@@ -209,6 +218,18 @@ int end;
 vbz_config;
 
 /*
+The vb_handler_callback struct is simply a struct that wraps a function pointer.
+We wrapp it in a struct so we can store other data to check whether it's been filled in or just contains uninitialised garbage.
+*/
+typedef struct
+{
+int begin;
+void* exec;
+int end;
+}
+vbz_handler_callback;
+
+/*
 The vb_handler_interface struct is what holds pointers to all the functions that a handler should implement.
 These should be implemented using the functions laid out in the public API above.
 The speaker API merely initialises a handler and uses its interface to call the underlying functions.
@@ -216,13 +237,13 @@ For a handler to be considered usable, it must at least have initialise, speak, 
 */
 typedef struct
 {
-vb_handler_cb_load load;
-vb_handler_cb_speak speak;
-vb_handler_cb_stop stop;
-vb_handler_cb_is_speaking is_speaking;
-vb_handler_cb_pause pause;
-vb_handler_cb_resume resume;
-vb_handler_cb_unload unload;
+vbz_handler_callback load;
+vbz_handler_callback speak;
+vbz_handler_callback stop;
+vbz_handler_callback is_speaking;
+vbz_handler_callback pause;
+vbz_handler_callback resume;
+vbz_handler_callback unload;
 }
 vbz_handler_interface;
 
@@ -233,9 +254,11 @@ Internally, it has a name, an interface, and any extra data used for controlling
 
 struct vbz_handler
 {
+int begin;
 char* id;
 vbz_handler_interface implementation;
 void* data;
+int end;
 };
 
 /*
@@ -244,8 +267,10 @@ vbz_registry is what stores all the handlers.
 
 typedef struct
 {
+int begin;
 vb_handler* handler;
 int count;
+int end;
 }
 vbz_registry;
 
@@ -256,12 +281,56 @@ Internally, it holds a copy of the configuration, the handler registry, and a re
 
 struct vbz_speaker
 {
+int begin;
 vbz_config config;
 vbz_registry registry;
 vb_handler* current_handler;
+int end;
 };
 
 /* ++ Functions */
+
+/* +++ Speaker methods */
+
+/*
+vbz_speaker_is_initialised
+Returns initialisation status based on boundary flags being set to magic numbers.
+*/
+
+int vbz_speaker_is_initialised(vb_speaker* speaker);
+
+/*
+vbz_speaker_set_state_init
+Sets the boundary flags to indicate init status..
+Should only be called when object is fully initialised.
+*/
+
+vb_result vbz_speaker_set_state_init(vb_speaker* speaker);
+
+/*
+vbz_speaker_load_handler
+Loads an appropriate handler for use based on the configuration settings.
+At the moment, the public-facing vb_speaker_start wraps this function.
+*/
+
+vb_result vbz_speaker_load_handler(vb_speaker* voice);
+
+/*
+vbz_speaker_load_preferred_handler
+Attempts to load the preferred handler.
+If this function fails, it returns vbr_init_failed.
+This includes if a preferred ID can't be found, or even is unset.
+*/
+
+vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice);
+
+/*
+vbz_speaker_load_any_handler
+Attempts to load any handler by walking through the registry in order.
+If this function fails, it means there are no available speech engine handlers that can be used.
+*/
+
+vb_result vbz_speaker_load_any_handler(vb_speaker* voice);
 
 /* +++ Config methods */
 
@@ -297,6 +366,28 @@ void vbz_config_cleanup(vbz_config* config);
 /* +++ Registry methods */
 
 /*
+vbz_registry_initialise
+The registry structure is initialised to sensible defaults.
+*/
+
+vb_result vbz_registry_initialise(vbz_registry* registry);
+
+/*
+vbz_registry_is_initialised
+Returns initialisation status based on boundary flags being set to magic numbers.
+*/
+
+int vbz_registry_is_initialised(vbz_registry* registry);
+
+/*
+vbz_registry_set_state_init
+Sets the boundary flags to indicate init status..
+Should only be called when object is fully initialised.
+*/
+
+vb_result vbz_registry_set_state_init(vbz_registry* registry);
+
+/*
 vbz_registry_find_handler_by_id
 Attempts to find a handler index by its textual ID.
 Returns -1 if no handler is found.
@@ -328,6 +419,36 @@ void vbz_registry_reset(vbz_registry* manager);
 /* +++ Handler methods */
 
 /*
+vbz_handler_initialise
+The handler structure is initialised to sensible defaults.
+*/
+
+vb_result vbz_handler_initialise(vb_handler* handler);
+
+/*
+vbz_handler_is_initialised
+Returns initialisation status based on boundary flags being set to magic numbers.
+*/
+
+int vbz_handler_is_initialised(vb_handler* handler);
+
+/*
+vbz_handler_set_state_init
+Sets the boundary flags to indicate init status..
+Should only be called when object is fully initialised.
+*/
+
+vb_result vbz_handler_set_state_init(vb_handler* handler);
+
+/*
+vbz_handler_load
+Loads the voice data in a handler.
+See "vb_handler_register" above.
+*/
+
+vb_result vbz_handler_load(vb_handler* handler);
+
+/*
 vbz_handler_is_usable
 Looks for certain functions in the handler. If they are missing, it is considered unusable.
 See "vb_handler_register" above.
@@ -345,12 +466,19 @@ Its only purpose is to clear out the engine and data associated with it.
 void vbz_handler_unload(vb_handler* handler);
 
 /*
-vbz_handler_ucleanup
+vbz_handler_cleanup
 Cleans up generic handler data.
 Note this clears out everything to do with a handle, including its textual ID and interface.
 */
 
 void vbz_handler_cleanup(vb_handler* handler);
+
+/*
+vbz_handler_reset
+Resets the fields in the handler.
+*/
+
+void vbz_handler_reset(vb_handler* handler);
 
 /* +++ Handler implementation methods */
 
@@ -361,32 +489,28 @@ Used before initialisation and after cleanup: Simply initialises all the pointer
 
 void vbz_handler_implementation_reset(vbz_handler_interface* i);
 
-/* +++ Speaker methods */
+/* +++ Handler callback methods */
 
 /*
-vbz_speaker_load_handler
-Loads an appropriate handler for use based on the configuration settings.
-At the moment, the public-facing vb_speaker_start wraps this function.
+vbz_handler_callback_set
+Initialises and sets a function pointer.
 */
 
-vb_result vbz_speaker_load_handler(vb_speaker* voice);
+vb_result vbz_handler_callback_set(vbz_handler_callback* cb, void* exec);
 
 /*
-vbz_speaker_load_preferred_handler
-Attempts to load the preferred handler.
-If this function fails, it returns vbr_init_failed.
-This includes if a preferred ID can't be found, or even is unset.
+vbz_handler_callback_is_set
+Checks whether a callback is in use.
 */
 
-vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice);
+int vbz_handler_callback_is_set(vbz_handler_callback* cb);
 
 /*
-vbz_speaker_load_any_handler
-Attempts to load any handler by walking through the registry in order.
-If this function fails, it means there are no available speech engine handlers that can be used.
+vbz_handler_callback_unset
+Resets a callback object.
 */
 
-vb_result vbz_speaker_load_any_handler(vb_speaker* voice);
+void vbz_handler_callback_unset(vbz_handler_callback* cb);
 
 /* +++ Helper functions */
 
