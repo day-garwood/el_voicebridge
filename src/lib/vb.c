@@ -826,13 +826,13 @@ vb_result vbz_mac_register_handler(vb_speaker* voice)
 if(!voice) return vbr_invalid_args;
 #ifdef __APPLE__
 vb_handler mac;
-mac.implementation.load=vbz_mac_initialise;
-mac.implementation.speak=vbz_mac_speak;
-mac.implementation.stop=vbz_mac_stop;
-mac.implementation.pause=vbz_mac_pause;
-mac.implementation.resume=vbz_mac_resume;
-mac.implementation.is_speaking=vbz_mac_is_speaking;
-mac.implementation.unload=vbz_mac_cleanup;
+vb_handler_implement_load(&mac, vbz_mac_initialise);
+vb_handler_implement_speak(&mac, vbz_mac_speak);
+vb_handler_implement_stop(&mac, vbz_mac_stop);
+vb_handler_implement_pause(&mac, vbz_mac_pause);
+vb_handler_implement_resume(&mac, vbz_mac_resume);
+vb_handler_implement_is_speaking(&mac, vbz_mac_is_speaking);
+vb_handler_implement_unload(&mac, vbz_mac_cleanup);
 return vb_speaker_register_handler(voice, "system", &mac);
 #else
 return vbr_unsupported;
