@@ -27,7 +27,7 @@
 /*
 The API is designed in such a way that the library does a lot of the legwork.
 The only object you need to store is the vb_speaker object.
-Everything else (strings, configs, handlers) is copied internally.
+Everything else (strings, handlers, interfaces) is copied internally.
 */
 
 /* ++ Typedefs */
@@ -69,6 +69,7 @@ vbr_invalid_args,
 vbr_not_initialised,
 vbr_already_initialised,
 vbr_initialisation_failed,
+vbr_not_loaded,
 vbr_handler_invalid,
 vbr_handler_id_invalid,
 vbr_handler_id_taken,
@@ -98,7 +99,7 @@ vb_speaker_initialise
 Registers builtin handlers and configures the system.
 */
 
-vb_result vb_speaker_initialise(vb_speaker* voice, char* handler, int allow_fallback);
+vb_result vb_speaker_initialise(vb_speaker* voice);
 
 /*
 vb_speaker_register_handler
@@ -115,7 +116,7 @@ vb_speaker_load
 Initialises an appropriate handler ready for use.
 */
 
-vb_result vb_speaker_load(vb_speaker* voice);
+vb_result vb_speaker_load(vb_speaker* voice, char* synth);
 
 /*
 Please note that the below functions are merely wrappers to call the handler's equivalent function.
@@ -193,8 +194,6 @@ vb_result vb_handler_implement_unload(vb_handler* handler, vb_handler_cb_unload 
 
 #define vbz_speaker_begin 0x45C48DF2
 #define vbz_speaker_end 0x3D728CB1
-#define vbz_config_begin 0x724B8EE1
-#define vbz_config_end 0xAF471799
 #define vbz_registry_begin 0xB79E31DE
 #define vbz_registry_end 0x3707A89C
 #define vbz_handler_begin 0xA2227B52
@@ -205,18 +204,6 @@ vb_result vb_handler_implement_unload(vb_handler* handler, vb_handler_cb_unload 
 /* ++ Structures */
 
 /*
-vbz_config is a way to configure the speech system you're about to initialise.
-This is small at the moment but may grow in time.
-*/
-typedef struct
-{
-int begin;
-char* handler_preference; /* Internal, controlled with parameter to config_initialise */
-int handler_fallback; /* 0 to disallow fallbacks, or non-zero to allow them. */
-int end;
-}
-vbz_config;
-
 /*
 The vb_handler_callback struct is simply a struct that wraps a function pointer.
 We wrapp it in a struct so we can store other data to check whether it's been filled in or just contains uninitialised garbage.
@@ -276,13 +263,12 @@ vbz_registry;
 
 /*
 vbz_speaker: Internal definition of alias vb_speaker above.
-Internally, it holds a copy of the configuration, the handler registry, and a reference to the handler currently in use.
+Internally, it holds a copy of the handler registry, and a reference to the handler currently in use.
 */
 
 struct vbz_speaker
 {
 int begin;
-vbz_config config;
 vbz_registry registry;
 vb_handler* current_handler;
 int end;
@@ -308,60 +294,13 @@ Should only be called when object is fully initialised.
 vb_result vbz_speaker_set_state_init(vb_speaker* speaker);
 
 /*
-vbz_speaker_load_handler
-Loads an appropriate handler for use based on the configuration settings.
-At the moment, the public-facing vb_speaker_start wraps this function.
+vbz_speaker_register_handler
+Registers external handlers.
+Called by vb_speaker_register_handler after init check.
+This lower level function is used directly by register_internal_handlers, as they are registered as part of the initialisation process.
 */
 
-vb_result vbz_speaker_load_handler(vb_speaker* voice);
-
-/*
-vbz_speaker_load_preferred_handler
-Attempts to load the preferred handler.
-If this function fails, it returns vbr_init_failed.
-This includes if a preferred ID can't be found, or even is unset.
-*/
-
-vb_result vbz_speaker_load_preferred_handler(vb_speaker* voice);
-
-/*
-vbz_speaker_load_any_handler
-Attempts to load any handler by walking through the registry in order.
-If this function fails, it means there are no available speech engine handlers that can be used.
-*/
-
-vb_result vbz_speaker_load_any_handler(vb_speaker* voice);
-
-/* +++ Config methods */
-
-/*
-vbz_config_initialise
-The config structure is initialised to sensible defaults.
-*/
-
-vb_result vbz_config_initialise(vbz_config* config, char* handler, int allow_fallback);
-
-/*
-vbz_config_is_initialised
-Returns initialisation status based on boundary flags being set to magic numbers.
-*/
-
-int vbz_config_is_initialised(vbz_config* config);
-
-/*
-vbz_config_set_state_init
-Sets the boundary flags to indicate init status..
-Should only be called when object is fully initialised.
-*/
-
-vb_result vbz_config_set_state_init(vbz_config* config);
-
-/*
-vbz_config_cleanup
-Clean up an initialised config.
-*/
-
-void vbz_config_cleanup(vbz_config* config);
+vb_result vbz_speaker_register_handler(vb_speaker* voice, char* id, vb_handler* handler);
 
 /* +++ Registry methods */
 
